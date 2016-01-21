@@ -7,10 +7,11 @@ Authors: Joel Burton, Christian Fernandez, Meggie Mahnken.
 """
 
 
-from flask import Flask, render_template, redirect, flash, session
+from flask import Flask, render_template, redirect, flash, session, request
 import jinja2
 
 import melons
+import customers
 
 
 app = Flask(__name__)
@@ -59,23 +60,25 @@ def show_melon(melon_id):
 @app.route("/cart")
 def shopping_cart():
     """Display content of shopping cart."""
+    if 'cart' not in session:
+        session['cart'] = []
 
     melons_in_cart = []
     total = 0
-    for id in session['cart']:
-        current_melon = melons.get_by_id(id)
+    for num in session['cart']:
+        current_melon = melons.get_by_id(num)
         total += current_melon.price
-        if hasattr(current_melon, 'quantity'):
+        if current_melon in melons_in_cart:
             current_melon.quantity += 1
         else:
             current_melon.quantity = 1
-        melons_in_cart.append(current_melon)
+            melons_in_cart.append(current_melon)
+
 
     # TODO: Display the contents of the shopping cart.
 
     # The logic here will be something like:
-    #if session['cart']:
-        # cart.append(melon[id])
+
     # - get the list-of-ids-of-melons from the session cart
     # see if session has a cart; if not add one.
     # - loop over this list:
@@ -96,7 +99,7 @@ def add_to_cart(id):
     """
 
 
-    if 'cart' not in session.keys():
+    if 'cart' not in session:
         session['cart'] = []
     session['cart'].append(id) 
 
@@ -108,7 +111,7 @@ def add_to_cart(id):
     #
     # - add the id of the melon they bought to the cart in the session
 
-    return render_template("cart.html")
+    return redirect("/cart")
 
 
 @app.route("/login", methods=["GET"])
@@ -126,9 +129,21 @@ def process_login():
     dictionary, look up the user, and store them in the session.
     """
 
-    # TODO: Need to implement this!
+    username = request.form.get("email")
+    password = request.form.get("password")
+    if username not in customers.customers:
+        flash("User not found")
+        return redirect("/login")
+    else:
+        if password == customers.customers[username].password:
+            session["logged_in_customer_email"] = username
+            flash("You have successfully logged in!")
+        else:
+            flash("Wrong password")
+            return redirect("/login")
 
-    return "Oops! This needs to be implemented"
+
+    return redirect("/melons")
 
 
 @app.route("/checkout")
